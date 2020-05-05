@@ -1,0 +1,16 @@
+{
+  "name": "remove-user-from-enterprise",
+  "version": "1.0.0",
+  "description": "Revoke a user's access to every repo in every org under an Enterprise",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "IAmHughes, jwiebalk",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "*",
+    "@octokit/graphql": "*",
+    "dotenv": "*"
+  }
+}
