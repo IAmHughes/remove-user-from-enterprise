@@ -1,12 +1,17 @@
 require('dotenv').config()
-// const { github } = require('@octokit/rest')({
-//   auth: `token ${process.env.GITHUB_TOKEN}`,
-//   previews: [
-//     'hellcat-preview'
-//   ],
-//   // Set this to GHES url or will default to dotcom
-//   baseUrl: process.env.GITHUB_API_URL
-// })
+const argv = require('yargs').argv
+const { Octokit } = require('@octokit/rest')
+const github = new Octokit({
+  auth: process.env.GITHUB_TOKEN,
+  baseUrl: process.env.GITHUB_API_URL,
+  headers:
+   {
+     accept: 'application/vnd.github.v3+json',
+     'user-agent':
+      'octokit.js/0.0.0-development Node.js/10.15.0 (macOS Mojave x64)'
+   }
+})
+
 let { graphql } = require('@octokit/graphql')
 graphql = graphql.defaults({
   baseUrl: process.env.GITHUB_API_URL,
@@ -33,14 +38,34 @@ async function getOrganizations () {
   }
   try {
     const getOrgResult = await graphql(query)
-    console.log(getOrgResult.enterprise.organizations.nodes[0].login)
     const orgsObj = getOrgResult.enterprise.organizations.nodes
 
     orgsObj.forEach((org) => {
-      console.log(org.login)
+      console.log(`Starting on Org: ${org.login}`)
+      removeUserFromOrg(org.login)
     })
   } catch (error) {
     console.log('Request failed:', error.request)
     console.log(error.message)
+  }
+}
+
+async function removeUserFromOrg (org) {
+  try {
+    console.log(`Trying to remove outside collaborator: ${argv.user} on Org: ${org}`)
+    await github.orgs.removeOutsideCollaborator({
+      org,
+      username: argv.user
+    })
+  } catch (error) {
+    if (error.status !== 422) {
+      throw error
+    }
+
+    console.log(`Trying to remove member: ${argv.user} on Org: ${org}`)
+    await github.orgs.removeMembership({
+      org,
+      username: argv.user
+    })
   }
 }
