@@ -28,7 +28,7 @@ async function getOrganizations () {
     `query ($enterprise: String! $cursor: String) {
       enterprise(slug:$enterprise) {
         name
-        organizations(first: 1 after:$cursor) {
+        organizations(first: 100 after:$cursor) {
           pageInfo {
             hasNextPage
             endCursor
