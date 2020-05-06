@@ -3,13 +3,7 @@ const argv = require('yargs').argv
 const { Octokit } = require('@octokit/rest')
 const github = new Octokit({
   auth: process.env.GITHUB_TOKEN,
-  baseUrl: process.env.GITHUB_API_URL,
-  headers:
-   {
-     accept: 'application/vnd.github.v3+json',
-     'user-agent':
-      'octokit.js/0.0.0-development Node.js/10.15.0 (macOS Mojave x64)'
-   }
+  baseUrl: process.env.GITHUB_API_URL
 })
 
 let { graphql } = require('@octokit/graphql')
@@ -20,7 +14,13 @@ graphql = graphql.defaults({
   }
 })
 
-getOrganizations()
+if (argv.user) {
+  getOrganizations().then(logOrgOwnershipNeeded)
+} else {
+  console.log('Invalid options passed\n')
+  console.log('To use this script, you must specify a user: ')
+  console.log('node index.js --user <username>\n')
+}
 
 async function getOrganizations () {
   const query = {
@@ -40,32 +40,41 @@ async function getOrganizations () {
     const getOrgResult = await graphql(query)
     const orgsObj = getOrgResult.enterprise.organizations.nodes
 
-    orgsObj.forEach((org) => {
-      console.log(`Starting on Org: ${org.login}`)
-      removeUserFromOrg(org.login)
-    })
+    for (let org of orgsObj) {
+      await removeUserFromOrg(org.login)
+    }
   } catch (error) {
     console.log('Request failed:', error.request)
     console.log(error.message)
   }
 }
 
+const orgOwnerNeeded = []
 async function removeUserFromOrg (org) {
   try {
-    console.log(`Trying to remove outside collaborator: ${argv.user} on Org: ${org}`)
     await github.orgs.removeOutsideCollaborator({
       org,
       username: argv.user
     })
+    console.log(`Successfully removed ${argv.user} from Org: ${org}`)
   } catch (error) {
-    if (error.status !== 422) {
+    if (error.status === 403) {
+      orgOwnerNeeded.push(org)
+    } else if (error.status === 422) {
+      await github.orgs.removeMembership({
+        org,
+        username: argv.user
+      })
+      console.log(`Successfully removed ${argv.user} from Org: ${org}`)
+    } else {
       throw error
     }
+  }
+}
 
-    console.log(`Trying to remove member: ${argv.user} on Org: ${org}`)
-    await github.orgs.removeMembership({
-      org,
-      username: argv.user
-    })
+function logOrgOwnershipNeeded () {
+  if (orgOwnerNeeded.length > 0) {
+    console.log(`\n---\n\nFailed to remove as your token is not an owner of these orgs:\n
+  ${orgOwnerNeeded.join('\n  ')}`)
   }
 }
