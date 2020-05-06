@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Node script will take in a given `user` login and revoke their membership to the organizations the Enterprise controls. If they are an outside collaborator, this will revoke their collaborator status. It leverages the [Octokit](https://github.com/octokit/rest.js) library and works on both GitHub.com and GitHub Enterprise Server.
+This Node script will take in a given `user` login and revoke their membership to the organizations the Enterprise controls. If they are an outside collaborator, this will revoke their collaborator status. It leverages the [octokit/rest](https://github.com/octokit/rest.js) and [octokit/graphql](https://github.com/octokit/graphql.js) libraries and works on both GitHub.com and GitHub Enterprise Server.
 
 ## How to use
 
