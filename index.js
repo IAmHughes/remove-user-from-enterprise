@@ -23,26 +23,37 @@ if (argv.user) {
 }
 
 async function getOrganizations () {
-  const query = {
-    query: `query ($enterprise: String!) {
+  let pagination = null
+  const query =
+    `query ($enterprise: String! $cursor: String) {
       enterprise(slug:$enterprise) {
         name
-        organizations(first: 100) {
+        organizations(first: 1 after:$cursor) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
           nodes {
             login
           }
         }
       }
-    }`,
-    enterprise: process.env.ENTERPRISE
-  }
+    }`
   try {
-    const getOrgResult = await graphql(query)
-    const orgsObj = getOrgResult.enterprise.organizations.nodes
+    let hasNextPage = false
+    do {
+      const getOrgResult = await graphql({ query, enterprise: process.env.ENTERPRISE, cursor: pagination })
+      hasNextPage = getOrgResult.enterprise.organizations.pageInfo.hasNextPage
+      const orgsObj = getOrgResult.enterprise.organizations.nodes
 
-    for (let org of orgsObj) {
-      await removeUserFromOrg(org.login)
-    }
+      for (const org of orgsObj) {
+        await removeUserFromOrg(org.login)
+      }
+
+      if (hasNextPage) {
+        pagination = getOrgResult.enterprise.organizations.pageInfo.endCursor
+      }
+    } while (hasNextPage)
   } catch (error) {
     console.log('Request failed:', error.request)
     console.log(error.message)
